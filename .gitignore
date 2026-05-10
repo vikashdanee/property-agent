@@ -6,3 +6,5 @@ memory.db
 .venv/
 .DS_Store
 test_email.py
+memory.db-shm
+memory.db-wal

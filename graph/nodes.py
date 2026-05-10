@@ -85,10 +85,17 @@ Reply with ONLY one word: applicant, resident, or unknown."""),
 
 # ── Nodes ──────────────────────────────────────────────────
 def identify_node(state: AgentState):
-    messages  = [IDENTIFY_PROMPT] + state["messages"]
-    response  = get_llm().invoke(messages)
+    # Classify first — before generating any response
     user_type = classify_user_type(state["messages"])
-    return {"messages": [response], "user_type": user_type}
+
+    # If already classified — return silently, let router handle it
+    if user_type:
+        return {"user_type": user_type}
+
+    # Not clear yet — ask the question
+    messages = [IDENTIFY_PROMPT] + state["messages"]
+    response = get_llm().invoke(messages)
+    return {"messages": [response], "user_type": None}
 
 def applicant_node(state: AgentState):
     messages = [APPLICANT_PROMPT] + state["messages"]

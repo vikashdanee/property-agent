@@ -2,10 +2,10 @@
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from typing import Optional
+from database.connection import get_db_session
+from database.models import Booking
 from tools.send_email import send_booking_confirmation
 import json
-
-BOOKINGS = []
 
 AVAILABLE_SLOTS = [
     {"day": "Saturday", "time": "10:00 AM"},
@@ -36,27 +36,43 @@ def book_tour(unit_id: int, name: str, day: str,
         available = ", ".join([f"{s['day']} {s['time']}" for s in AVAILABLE_SLOTS])
         return f"That slot is unavailable. Available slots: {available}"
 
-    booking = {
-        "booking_id": len(BOOKINGS) + 1,
-        "unit_id":    unit_id,
-        "name":       name,
-        "day":        day,
-        "time":       time,
-        "status":     "confirmed"
-    }
-    BOOKINGS.append(booking)
-
-    # Send confirmation email if provided
-    email_sent = False
-    if email:
-        email_sent = send_booking_confirmation(
-            to_email   = email,
-            name       = name,
-            unit_id    = unit_id,
-            day        = day,
-            time       = time,
-            booking_id = booking["booking_id"]
+    db = get_db_session()
+    try:
+        booking = Booking(
+            unit_id = unit_id,
+            name    = name,
+            email   = email,
+            day     = day,
+            time    = time,
+            status  = "confirmed"
         )
+        db.add(booking)
+        db.commit()
+        db.refresh(booking)
 
-    result = {**booking, "email_sent": email_sent}
-    return json.dumps(result, indent=2)
+        email_sent = False
+        if email:
+            email_sent = send_booking_confirmation(
+                to_email   = email,
+                name       = name,
+                unit_id    = unit_id,
+                day        = day,
+                time       = time,
+                booking_id = booking.id
+            )
+
+        result = {
+            "booking_id": booking.id,
+            "unit_id":    booking.unit_id,
+            "name":       booking.name,
+            "day":        booking.day,
+            "time":       booking.time,
+            "status":     booking.status,
+            "email_sent": email_sent,
+        }
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        db.rollback()
+        return f"Booking failed: {str(e)}"
+    finally:
+        db.close()

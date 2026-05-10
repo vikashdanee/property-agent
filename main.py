@@ -2,6 +2,10 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+from database.seed import create_tables, seed_data
+create_tables()
+seed_data()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse

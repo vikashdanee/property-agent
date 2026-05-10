@@ -2,10 +2,10 @@
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 from typing import Optional
+from database.connection import get_db_session
+from database.models import MaintenanceTicket
 from tools.send_email import send_maintenance_confirmation
 import json
-
-TICKETS = []
 
 PRIORITY_LEVELS = {
     "emergency": ["no water", "no heat", "flood", "fire", "gas leak", "no electricity"],
@@ -37,28 +37,44 @@ def maintenance_ticket(unit_id: int, tenant_name: str, issue: str,
     anything broken in their unit."""
 
     priority = assign_priority(issue)
-    ticket = {
-        "ticket_id":   len(TICKETS) + 1,
-        "unit_id":     unit_id,
-        "tenant_name": tenant_name,
-        "issue":       issue,
-        "priority":    priority,
-        "contact":     contact,
-        "status":      "open",
-    }
-    TICKETS.append(ticket)
-
-    # Send confirmation email if provided
-    email_sent = False
-    if email:
-        email_sent = send_maintenance_confirmation(
-            to_email  = email,
-            name      = tenant_name,
-            unit_id   = unit_id,
-            issue     = issue,
-            priority  = priority,
-            ticket_id = ticket["ticket_id"]
+    db = get_db_session()
+    try:
+        ticket = MaintenanceTicket(
+            unit_id     = unit_id,
+            tenant_name = tenant_name,
+            issue       = issue,
+            priority    = priority,
+            email       = email,
+            contact     = contact,
+            status      = "open"
         )
+        db.add(ticket)
+        db.commit()
+        db.refresh(ticket)
 
-    result = {**ticket, "email_sent": email_sent}
-    return json.dumps(result, indent=2)
+        email_sent = False
+        if email:
+            email_sent = send_maintenance_confirmation(
+                to_email  = email,
+                name      = tenant_name,
+                unit_id   = unit_id,
+                issue     = issue,
+                priority  = priority,
+                ticket_id = ticket.id
+            )
+
+        result = {
+            "ticket_id":   ticket.id,
+            "unit_id":     ticket.unit_id,
+            "tenant_name": ticket.tenant_name,
+            "issue":       ticket.issue,
+            "priority":    ticket.priority,
+            "status":      ticket.status,
+            "email_sent":  email_sent,
+        }
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        db.rollback()
+        return f"Ticket creation failed: {str(e)}"
+    finally:
+        db.close()

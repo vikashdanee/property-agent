@@ -39,3 +39,13 @@ async def health():
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
+
+@app.get("/debug-env")
+async def debug_env():
+    import os
+    return {
+        "ANTHROPIC_API_KEY": "SET" if os.environ.get("ANTHROPIC_API_KEY") else "MISSING",
+        "SENDGRID_API_KEY":  "SET" if os.environ.get("SENDGRID_API_KEY")  else "MISSING",
+        "SENDER_EMAIL":      os.environ.get("SENDER_EMAIL", "MISSING"),
+        "DB_PATH":           os.environ.get("DB_PATH", "MISSING"),
+    }

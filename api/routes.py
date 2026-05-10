@@ -33,7 +33,7 @@ def extract_reply(messages) -> str:
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     config = {"configurable": {"thread_id": request.thread_id}}
-    loop   = asyncio.get_event_loop()
+    loop   = asyncio.get_running_loop()
     result = await loop.run_in_executor(
         None,
         partial(app.invoke,
@@ -51,7 +51,7 @@ async def chat_stream(request: ChatRequest):
     async def generate():
         try:
             queue = asyncio.Queue()
-            loop  = asyncio.get_event_loop()
+            loop  = asyncio.get_running_loop()
 
             def run_sync():
                 for chunk, metadata in app.stream(

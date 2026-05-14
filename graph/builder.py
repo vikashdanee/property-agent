@@ -12,6 +12,7 @@ from graph.nodes import (
 from graph.edges import route_by_user_type, route_applicant, route_resident
 from tools.unit_search import search_units
 from tools.book_tour import book_tour
+from tools.search_lease import search_lease
 import sqlite3
 
 def build_graph():

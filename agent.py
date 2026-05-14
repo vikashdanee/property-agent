@@ -4,9 +4,13 @@ load_dotenv()
 
 from langchain_core.messages import HumanMessage, AIMessage
 from graph.builder import build_graph
+import uuid
 
 app    = build_graph()
-config = {"configurable": {"thread_id": "user_001"}}
+
+# Fresh session every run for testing
+# Change to a fixed ID like "user_001" for persistent memory
+config = {"configurable": {"thread_id": str(uuid.uuid4())}}
 
 def extract_reply(messages) -> str:
     for msg in reversed(messages):
